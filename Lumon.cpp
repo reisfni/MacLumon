@@ -14,7 +14,32 @@
 #include "MathTables.h"
 
 #define NUM_ELEMS(arr) (sizeof(arr) / sizeof((arr)[0]))
-#define TO_FIXED(value) (((long)value) << kFixShift)
+
+#define USE_TOOLBOX_FIXED_ROUTINES 0
+
+#if USE_TOOLBOX_FIXED_ROUTINES
+	// Use the toolbox functions introducted in the 128K ROMs.
+	// This generates code that is incompatible with 64k ROMs,
+	// is larger and runs slower. There is probably no reason
+	// to do so, unless you want the additional error checking
+	// and rounding.
+
+	#define fixRatio      FixRatio
+	#define fixMul        FixMul
+	#define long2Fix      Long2Fix
+	#define fix2Long      Fix2Long
+#else
+	// Use our own functions for compatibility with 64k ROMs.
+	// By using 8 bits rather than 16 for the decimals, we also
+	// end up with tighter code.
+
+	#define kFixShift     8
+
+	#define fixRatio(A,B) (((A) << kFixShift) / (B))
+	#define fixMul(A,B)   ((A) * (B) >> kFixShift)
+	#define long2Fix(A)   (((long)A) << kFixShift)
+	#define fix2Long(A)   ((A) >> kFixShift)
+#endif
 
 enum {
 	mApple         = 32000,
@@ -33,7 +58,6 @@ enum {
 	kIdleTicks       = 3600,
 	kIdleBounceSpeed = 1,
 
-	kFixShift        = 8, // Number of bits in decimal of fixed point integers.
 	kGridCols        = 16,
 	kGridRows        = 7,
 	kBoxFlapsOpen    = 22
@@ -45,7 +69,7 @@ typedef struct {
 	char digit;
 	char size;
 	short res;
-	long x, y;
+	Fixed x, y;
 	long res1;
 } Number;
 
@@ -54,8 +78,8 @@ const short maxNumbersToAnimate = 12;
 typedef struct {
 	unsigned long tStart, tDelta;
 	Number *number[maxNumbersToAnimate];
-	long xStart[maxNumbersToAnimate], yStart[maxNumbersToAnimate];
-	long xDelta[maxNumbersToAnimate], yDelta[maxNumbersToAnimate];
+	Fixed xStart[maxNumbersToAnimate], yStart[maxNumbersToAnimate];
+	Fixed xDelta[maxNumbersToAnimate], yDelta[maxNumbersToAnimate];
 	char whichBin;
 } Animation;
 
@@ -798,8 +822,8 @@ void DrawNumber (Number *number) {
 	TextFace (number->size == unselectedNumberSize ? normal : bold);
 	TextSize (number->size);
 	MoveTo (
-		number->x >> kFixShift,
-		number->y >> kFixShift
+		fix2Long (number->x),
+		fix2Long (number->y)
 	);
 	DrawChar (number->digit);
 }
@@ -827,8 +851,8 @@ void ResetNumber (short x, short y, short size) {
 	const short charWidth  = CharWidth (number->digit);
 	const short charHeight = fi.ascent + fi.descent;
 
-	number->x     = TO_FIXED(gridRect.left + cellWidth  / 2 + cellWidth  * x - charWidth  / 2);
-	number->y     = TO_FIXED(gridRect.top  + cellHeight / 2 + cellHeight * y - charHeight / 2 + fi.ascent);
+	number->x     = long2Fix(gridRect.left + cellWidth  / 2 + cellWidth  * x - charWidth  / 2);
+	number->y     = long2Fix(gridRect.top  + cellHeight / 2 + cellHeight * y - charHeight / 2 + fi.ascent);
 	number->size  = size;
 }
 
@@ -841,14 +865,14 @@ void AnimateNumbers (Animation *animation) {
 
 	const Boolean animationInProgress = t < (animation->tStart + animation->tDelta);
 
-	const unsigned long f =
+	const Fixed f =
 		animationInProgress ?
-		((t - animation->tStart) << kFixShift) / animation->tDelta :
-		((1ul)                   << kFixShift) - 1;
+		fixRatio (t - animation->tStart, animation->tDelta) :
+		long2Fix (1);
 
-	const unsigned char fy = easeInQuad        [f * NUM_ELEMS(easeInQuad    )  >> kFixShift];
-	const unsigned char fx = easeOutQuad       [f * NUM_ELEMS(easeOutQuad   )  >> kFixShift];
-	const unsigned char fb = easeBounceQuint   [f * NUM_ELEMS(easeBounceQuint) >> kFixShift];
+	const unsigned char fy = easeInQuad        [fixMul(f,NUM_ELEMS(easeInQuad    )  - 1)];
+	const unsigned char fx = easeOutQuad       [fixMul(f,NUM_ELEMS(easeOutQuad   )  - 1)];
+	const unsigned char fb = easeBounceQuint   [fixMul(f,NUM_ELEMS(easeBounceQuint) - 1)];
 
 	Rect clipRect;
 	clipRect = qd.screenBits.bounds;
@@ -872,19 +896,19 @@ void AnimateNumbers (Animation *animation) {
 
 			// XOR out the old number
 			MoveTo (
-				number->x >> kFixShift,
-				number->y >> kFixShift
+				fix2Long (number->x),
+				fix2Long (number->y)
 			);
 			DrawChar (number->digit);
 
 			// Update the location
-			number->x = animation->xStart[i] + (animation->xDelta[i] * fx >> easeFuncBits);
-			number->y = animation->yStart[i] + (animation->yDelta[i] * fy >> easeFuncBits);
+			number->x = animation->xStart[i] + ((animation->xDelta[i] >> easeFuncBits) * fx);
+			number->y = animation->yStart[i] + ((animation->yDelta[i] >> easeFuncBits) * fy);
 
 			// XOR in the new number
 			MoveTo (
-				number->x >> kFixShift,
-				number->y >> kFixShift
+				fix2Long (number->x),
+				fix2Long (number->y)
 			);
 			DrawChar (number->digit);
 		}
@@ -977,8 +1001,8 @@ void BinNumbers (Animation* animation, short whichBin) {
 			animation->xStart[i] = number->x;
 			animation->yStart[i] = number->y;
 
-			animation->xDelta[i] = TO_FIXED(xEnd) - number->x;
-			animation->yDelta[i] = TO_FIXED(yEnd) - number->y;
+			animation->xDelta[i] = long2Fix(xEnd) - number->x;
+			animation->yDelta[i] = long2Fix(yEnd) - number->y;
 		}
 	}
 }
