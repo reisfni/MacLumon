@@ -158,7 +158,7 @@ void main(void) {
 	if (state == idleMode) {
 		ShowCursor ();
 	}
-	
+
 	KillPicture (gLumonIcon);
 }
 
@@ -413,7 +413,7 @@ const unsigned char *logoStr = "\pLUMON";
 
 PicHandle GetLumonIcon() {
 	Rect myRect;
-	
+
 	BackColor( blackColor );
 	ForeColor( whiteColor );
 
@@ -917,25 +917,25 @@ void AnimateNumbers (Animation *animation) {
 				ChooseNumber (animation->number[i]);
 			}
 		}
-				
+
 		// Fade in the numbers
 		for (int s = 0; s < 2; s++) {
 			TextMode (s == 0 ? grayishTextOr : 0);
-	    for (int i = 0; i < NUM_ELEMS(animation->number); i++) {
-	      if (animation->number[i]) {
+			for (int i = 0; i < NUM_ELEMS(animation->number); i++) {
+				if (animation->number[i]) {
 					long tmp;
-	      	DrawNumber (animation->number[i]);
-		    	Delay (2, &tmp);
-	      }
-	    }
+					DrawNumber (animation->number[i]);
+					Delay (2, &tmp);
+				}
+			}
 		}
 		PenPat (&qd.black);
-		
+
 		// Clear the animation data structure
 		for (int i = 0; i < NUM_ELEMS(animation->number); i++) {
 			animation->number[i] = NULL;
 		}
-		
+
 		// Erase the prior total score (as we are using XOR)
 		DrawTotalProgress ();
 
