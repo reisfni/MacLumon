@@ -41,6 +41,8 @@
 	#define fix2Long(A)   ((A) >> kFixShift)
 #endif
 
+#define float2Fix(A)    ((Fixed)(long2Fix (1) * A))
+
 enum {
 	mApple         = 32000,
 	mFile          = 32001,
@@ -490,20 +492,28 @@ void DrawLumonStr (PicHandle lumonIcon) {
 	FontInfo fi;
 	GetFontInfo (&fi);
 
+	// Measure the 'O' character, it seems about 95% as tall as the line
+
+	const oWidth  = CharWidth('O');
+	const oHeight = fixMul (fi.ascent, float2Fix (0.95));
+
+	// Draw 'LUM N' leaving a space for the 'O' and capturing it's position
+
+	Point oPos;
+
 	DrawChar ('L');
 	DrawChar ('U');
 	DrawChar ('M');
-	const oWidth = CharWidth('O');
-
-	Point penPos;
-	Rect iconRect;
-	GetPen (&penPos);
-	SetRect (&iconRect, penPos.h, penPos.v - fi.ascent * 0.9, penPos.h + oWidth, penPos.v);
-
-	DrawPicture (lumonIcon, &iconRect);
-
+	GetPen (&oPos);
 	Move(oWidth,0);
 	DrawChar ('N');
+	
+	// Draw the icon where the 'O' would be
+
+	Rect iconRect;
+	SetRect (&iconRect, oPos.h, oPos.v - oHeight, oPos.h + oWidth, oPos.v);
+
+	DrawPicture (lumonIcon, &iconRect);
 }
 
 void GetLogoSize (short *width, short *height) {
