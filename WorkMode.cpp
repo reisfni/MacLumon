@@ -501,7 +501,11 @@ static void AnimateNumbers (Animation *animation) {
 			}
 		}
 
-		// Fade in the numbers
+		// Fade in the numbers. For some reason, grayishTextOr messes with the pen state
+		// so it is necessary to save and restore it.
+
+		PenState savedPenState;
+		GetPenState( &savedPenState );
 		for (int s = 0; s < 2; s++) {
 			TextMode (s == 0 ? grayishTextOr : 0);
 			for (int i = 0; i < NUM_ELEMS(animation->number); i++) {
@@ -512,7 +516,7 @@ static void AnimateNumbers (Animation *animation) {
 				}
 			}
 		}
-		PenPat (&qd.black);
+		SetPenState (&savedPenState);
 
 		// Clear the animation data structure
 		for (int i = 0; i < NUM_ELEMS(animation->number); i++) {
