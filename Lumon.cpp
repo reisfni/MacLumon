@@ -42,6 +42,7 @@
 #endif
 
 #define float2Fix(A)    ((Fixed)(long2Fix (1) * A))
+#define scaleBy(A,B)    fixMul (A,float2Fix(B))
 
 enum {
 	mApple         = 32000,
@@ -495,7 +496,7 @@ void DrawLumonStr (PicHandle lumonIcon) {
 	// Measure the 'O' character, it seems about 95% as tall as the line
 
 	const oWidth  = CharWidth('O');
-	const oHeight = fixMul (fi.ascent, float2Fix (0.95));
+	const oHeight = scaleBy (fi.ascent, 0.95);
 
 	// Draw 'LUM N' leaving a space for the 'O' and capturing it's position
 
@@ -524,7 +525,7 @@ void GetLogoSize (short *width, short *height) {
 	GetFontInfo (&fi);
 
 	const short logoLineHeight = fi.ascent + fi.descent;
-	const short logoPadding    = logoLineHeight * 0.25;
+	const short logoPadding    = scaleBy (logoLineHeight, 0.25);
 
 	*width  = (StringWidth (logoStr) - 2) / 4 * 6;
 	*height = (logoLineHeight + logoPadding * 2) * 2;
@@ -543,7 +544,7 @@ void DrawLumonGlobe (PicHandle lumonIcon, Rect &logoRect) {
 	const short logoHeight = logoRect.bottom - logoRect.top;
 
 	// Foreshortening of latitude lines halfway up from equator to pole
-	const short f = logoWidth * 0.06698; // logoWidth / 2 * (1 - sqrt(0.75))
+	const short f = scaleBy (logoWidth, 0.06698); // logoWidth / 2 * (1 - sqrt(0.75))
 
 	MoveTo (logoRect.left  + f,      logoRect.top + logoHeight / 4);
 	LineTo (logoRect.right - f - ph, logoRect.top + logoHeight / 4);
@@ -690,8 +691,8 @@ void DrawWorkMode (Boolean resetNumbers) {
 	FontInfo fi;
 	GetFontInfo (&fi);
 	const short titleLineHeight = fi.ascent + fi.descent;
-	const short titleMargin     = titleLineHeight * 1.25;
-	titlePadding                = titleLineHeight * 0.25;
+	const short titleMargin     = scaleBy (titleLineHeight, 1.25);
+	titlePadding                = scaleBy (titleLineHeight, 0.25);
 	short logoWidth, logoHeight;
 
 	GetLogoSize (&logoWidth, &logoHeight);
@@ -731,7 +732,7 @@ void DrawWorkMode (Boolean resetNumbers) {
 	GetFontInfo (&fi);
 	GetIndString (myStr, 128, 2);
 	const short footerLineHeight    = fi.ascent + fi.descent;
-	const short footerPadding       = footerLineHeight * 0.2;
+	const short footerPadding       = scaleBy (footerLineHeight, 0.2);
 	const short footerWidth         = StringWidth (myStr);
 	const short footerTop           = qd.screenBits.bounds.bottom - footerLineHeight - footerPadding * 2;
 	MoveTo (
@@ -751,8 +752,8 @@ void DrawWorkMode (Boolean resetNumbers) {
 
 	const short progLineHeight         = fi.ascent + fi.descent;
 	const short columnMarginLeftRight  = qd.screenBits.bounds.right / 38;
-	const short progMarginTopBot       = progLineHeight * 0.25;
-	progPadding                        = progLineHeight * 0.25;
+	const short progMarginTopBot       = scaleBy (progLineHeight, 0.25);
+	progPadding                        = scaleBy (progLineHeight, 0.25);
 	const short columnWidth            = (qd.screenBits.bounds.right - columnMarginLeftRight * 8) / 5;
 	const short progHeight             = fi.ascent + fi.descent + progPadding * 2;
 
@@ -775,8 +776,8 @@ void DrawWorkMode (Boolean resetNumbers) {
 	GetFontInfo (&fi);
 
 	const short binLineHeight       = fi.ascent + fi.descent;
-	const short binMarginTopBot     = binLineHeight * 0.25;
-	const short binPaddingTopBot    = binLineHeight * 0.4;
+	const short binMarginTopBot     = scaleBy (binLineHeight, 0.25);
+	const short binPaddingTopBot    = scaleBy (binLineHeight, 0.4);
 
 	binRect.bottom  = progRect.top   - binMarginTopBot;
 	binRect.top     = binRect.bottom - binPaddingTopBot * 2 - binLineHeight;
