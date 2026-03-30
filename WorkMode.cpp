@@ -150,12 +150,12 @@ static void DrawBoxFlaps (short whichBox, unsigned char easing) {
 
 	if (easing == 0) return;
 
-	long angle = (unsigned long)easing * kBoxFlapsOpen >> easeFuncBits;
+	const long angle = (unsigned long)easing * kBoxFlapsOpen >> easeFuncBits;
 
 	const short flapLength = (boxRect.right - boxRect.left) / 2;
 	const short angleShifted = (angle + NUM_ELEMS(sineTable) / 4) % NUM_ELEMS(sineTable);
-	long   sine = ((long)sineTable[ angle        ] * flapLength) >> trigFuncBits;
-	long cosine = ((long)sineTable[ angleShifted ] * flapLength) >> trigFuncBits;
+	const long   sine = ((long)sineTable[ angle        ] * flapLength) >> trigFuncBits;
+	const long cosine = ((long)sineTable[ angleShifted ] * flapLength) >> trigFuncBits;
 
 	const short depthEffect = flapLength / 4 * easing >> easeFuncBits;
 
@@ -343,7 +343,7 @@ void DrawWorkMode (Boolean resetNumbers) {
 	for (short y = 0; y <  kGridRows; y++)
 	for (short x = 0; x <  kGridCols; x++) {
 		if (resetNumbers) {
-				ChooseNumber (&grid[x][y]);
+			ChooseNumber (&grid[x][y]);
 			ResetNumber (x, y, unselectedNumberSize);
 		}
 		DrawNumber (&grid[x][y]);
