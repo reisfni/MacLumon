@@ -29,8 +29,6 @@ console of a web browser:
   Reference: https://easings.net/
 */
 
-#include <assert.h>
-
 #define easeFuncBits 8
 #define trigFuncBits 7
 
