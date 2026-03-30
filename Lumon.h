@@ -1,5 +1,7 @@
 #pragma once
 
+//#define ACCENT_COLOR yellowColor
+
 extern PicHandle gLumonIcon;
 
 void StartWorkMode ();

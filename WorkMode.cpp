@@ -88,6 +88,7 @@ static Boolean DrawTotalProgress () {
 
 	NumToString (totalScore, theStr);
 
+	const short savedTextMode = qd.thePort->txMode;
 	TextFont (helvetica);
 	TextSize (headerFontSize);
 	TextFace (bold + outline);
@@ -99,6 +100,8 @@ static Boolean DrawTotalProgress () {
 	MoveTo (logoRect.left - StringWidth(progressStr) - StringWidth(theStr) - CharWidth(' '), titleRect.top + titlePadding + fi.ascent);
 	DrawString (theStr);
 	DrawString (progressStr);
+	TextMode (savedTextMode);
+
 	return totalScore == 100;
 }
 
@@ -106,15 +109,15 @@ static void DrawBinProgress (short which) {
 	Str255 theStr;
 	FontInfo fi;
 
+	const short savedTextMode = qd.thePort->txMode;
 	TextFont (helvetica);
 	TextSize (footerFontSize);
 	TextFace (normal);
-
-	PenMode (patCopy);
 	TextMode (srcXor);
 
 	Rect myRect = progRects[which];
 	EraseRect (&myRect);
+
 	FrameRect (&myRect);
 
 	myRect.right = myRect.left + (myRect.right - myRect.left) * binProgress[which] / 100;
@@ -126,6 +129,7 @@ static void DrawBinProgress (short which) {
 
 	DrawString (theStr);
 	DrawChar('%');
+	TextMode (savedTextMode);
 }
 
 static void DrawSeparator(short y, short separation) {
@@ -134,7 +138,6 @@ static void DrawSeparator(short y, short separation) {
 	MoveTo (0, y + separation);
 	LineTo(qd.screenBits.bounds.right, y + separation);
 }
-
 
 static void FinishedLevel () {
 	binProgress[0] = binProgress[1] = binProgress[2] = binProgress[3] = binProgress[4] = 0;
@@ -180,8 +183,6 @@ void StartWorkMode () {
 }
 
 void DrawWorkMode (Boolean resetNumbers) {
-	BackColor( blackColor );
-	ForeColor( whiteColor );
 	EraseRect (&qd.screenBits.bounds);
 
 	// Adjust the font sizes for small screens
@@ -201,6 +202,15 @@ void DrawWorkMode (Boolean resetNumbers) {
 	}
 
 	Rect binRect, progRect;
+
+	// Save the colors and pen state
+
+	PenState savedPenState;
+	GetPenState( &savedPenState );
+	#ifdef ACCENT_COLOR
+		const long savedBackColor = qd.thePort->bkColor;
+		const long savedForeColor = qd.thePort->fgColor;
+	#endif
 
 	// Clear the screen
 
@@ -246,6 +256,14 @@ void DrawWorkMode (Boolean resetNumbers) {
 
 	DrawLumonGlobe (logoRect, gLumonIcon);
 	DrawTotalProgress ();
+
+	// Everything from this point on must be drawn in white, regardless of whether
+	// an accent color is in use
+
+	#ifdef ACCENT_COLOR
+		BackColor( whiteColor );
+		ForeColor( blackColor );
+	#endif
 
 	// Draw the footer
 
@@ -324,6 +342,7 @@ void DrawWorkMode (Boolean resetNumbers) {
 	TextFont (helvetica);
 	TextSize (18);
 	TextFace (bold);
+	TextMode ( srcBic );
 
 	GetFontInfo (&fi);
 	SetRect (
@@ -348,6 +367,12 @@ void DrawWorkMode (Boolean resetNumbers) {
 		}
 		DrawNumber (&grid[x][y]);
 	}
+
+	SetPenState (&savedPenState);
+	#ifdef ACCENT_COLOR
+		BackColor (savedBackColor);
+		ForeColor (savedForeColor);
+	#endif
 
 	DrawSeparator (gridRect.bottom, 2);
 }
@@ -438,6 +463,17 @@ static void AnimateNumbers (Animation *animation) {
 	clipRect.bottom = binRects[0].top;
 	ClipRect (&clipRect);
 
+	// We will be changing the PenMode and drawing things in XOR, so
+	// store the current colors and pen state.
+
+	#ifdef ACCENT_COLOR
+		const short savedBackColor = qd.thePort->bkColor;
+		const short savedForeColor = qd.thePort->fgColor;
+	#endif
+
+	PenState savedPenState;
+	GetPenState( &savedPenState );
+
 	TextFont (helvetica);
 	TextFace (normal);
 	TextMode (srcXor);
@@ -501,13 +537,17 @@ static void AnimateNumbers (Animation *animation) {
 			}
 		}
 
-		// Fade in the numbers. For some reason, grayishTextOr messes with the pen state
-		// so it is necessary to save and restore it.
-
-		PenState savedPenState;
-		GetPenState( &savedPenState );
 		for (int s = 0; s < 2; s++) {
-			TextMode (s == 0 ? grayishTextOr : 0);
+			if (s == 0) {
+				// Draw grayish text, reversed.
+				BackColor( blackColor );
+				ForeColor( whiteColor );
+				TextMode ( grayishTextOr );
+			} else {
+				BackColor( whiteColor );
+				ForeColor( blackColor );
+				TextMode ( srcBic );
+			}
 			for (int i = 0; i < NUM_ELEMS(animation->number); i++) {
 				if (animation->number[i]) {
 					long tmp;
@@ -516,6 +556,9 @@ static void AnimateNumbers (Animation *animation) {
 				}
 			}
 		}
+
+		// For some reason grayishTextOr messes with the PenState, so restore it now
+
 		SetPenState (&savedPenState);
 
 		// Clear the animation data structure
@@ -536,11 +579,21 @@ static void AnimateNumbers (Animation *animation) {
 
 		// Draw the new scores
 
+		PenMode (patBic);
+
 		DrawBinProgress (animation->whichBin);
 		if (DrawTotalProgress ()) {
 			FinishedLevel ();
 		}
 	}
+
+	// Restore the pen state and colors
+
+	#ifdef ACCENT_COLOR
+		BackColor( savedBackColor );
+		ForeColor( savedForeColor );
+	#endif
+	SetPenState (&savedPenState);
 }
 
 void AnimateWorkMode () {

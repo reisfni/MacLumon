@@ -9,9 +9,6 @@ static const unsigned char *logoStr = "\pLUMON";
 PicHandle GetLumonIcon() {
 	Rect myRect;
 
-	BackColor( blackColor );
-	ForeColor( whiteColor );
-
 	RgnHandle rgn1 = NewRgn();
 	OpenRgn();
 		SetRect (&myRect, 47, 12, 53, 18);
@@ -159,15 +156,12 @@ void DrawLumonGlobe (const Rect &logoRect, PicHandle lumonIcon) {
 		logoRect.top  + logoHeight/2 + fi.ascent/2
 	);
 
-	TextMode (srcCopy);
+	TextMode (notSrcCopy);
 	DrawLumonStr (lumonIcon);
 }
 
 void DrawBootLogo () {
 	Rect myRect = qd.screenBits.bounds;
-
-	BackColor( blackColor );
-	ForeColor( whiteColor );
 
 	EraseRect (&myRect);
 

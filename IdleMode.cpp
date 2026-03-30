@@ -38,9 +38,6 @@ void StartIdleMode () {
 }
 
 void DrawIdleMode () {
-	BackColor( blackColor );
-	ForeColor( whiteColor );
-
 	EraseRect (&qd.screenBits.bounds);
 
 	// Draw the logo
@@ -51,8 +48,10 @@ void DrawIdleMode () {
 
 	// Reset these colors to avoid artifacting with CopyBits on color Macs
 
-	BackColor( whiteColor );
-	ForeColor( blackColor );
+	#ifdef ACCENT_COLOR
+		BackColor( whiteColor );
+		ForeColor( blackColor );
+	#endif
 }
 
 void AnimateIdleMode () {

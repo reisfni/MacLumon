@@ -139,11 +139,19 @@ void main () {
 
 	// Create our main window
 
+	LMSetPaintWhite(0);
+
 	Rect windRect = qd.screenBits.bounds;
-	mainWindow = NewWindow( nil, &windRect, "\pLumon Industries", true, plainDBox,
+	mainWindow = NewWindow( nil, &windRect, "\pLumon Industries", false, plainDBox,
 							(WindowPtr) -1, false, 0 );
 
 	SetPort (mainWindow);
+	BackPat (&qd.black);
+	#ifdef ACCENT_COLOR
+		BackColor (ACCENT_COLOR);
+	#endif
+	PenMode (patBic);
+	ShowWindow (mainWindow);
 
 	// Set up our menus and other resources
 
@@ -170,6 +178,11 @@ void main () {
 					if (window == mainWindow) {
 						BeginUpdate (window);
 						UnionRgn (window->visRgn, gMenuBarRgn, window->visRgn);
+
+						#ifdef ACCENT_COLOR
+							BackColor (ACCENT_COLOR);
+						#endif
+
 						switch (state) {
 							case bootMode:
 								DrawBootLogo ();
@@ -181,6 +194,7 @@ void main () {
 								DrawIdleMode ();
 								break;
 						}
+
 						EndUpdate (window);
 						UnionRgn (window->visRgn, gMenuBarRgn, window->visRgn);
 					}
@@ -257,7 +271,7 @@ void main () {
 
 				// Check to see whether we should stop the screen saver
 				GetMouse (&currentMousePoint);
-				if (!EqualPt(currentMousePoint, lastMousePoint)) {
+				if (!EqualPt(currentMousePoint, lastMousePoint) || (event.what == keyDown)) {
 					ShowCursor ();
 					gTimer = TickCount();
 					InvalRect (&qd.screenBits.bounds);
