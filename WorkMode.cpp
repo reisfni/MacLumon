@@ -6,10 +6,14 @@
 #define NUM_ELEMS(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 enum {
-	kMaxNumbersToAnimate = 12,
-	kGridCols            = 16,
-	kGridRows            = 7,
-	kBoxFlapsOpen        = 22
+	kMaxNumbersToAnimate  = 12,
+	kGridCols             = 16,
+	kGridRows             = 7,
+	kBoxFlapsOpen         = 22,
+	kAutoClickTicks       = 180,   // ~3 seconds base interval between auto-clicks
+	kAutoClickJitter      = 120,   // up to ~2 seconds of random variation
+	kAutoClickStartTicks  = 300,   // ~5 second delay before demo starts
+	kManualClickPause     = 3600,  // ~60 seconds before demo resumes after real input
 };
 
 typedef struct {
@@ -29,8 +33,10 @@ typedef struct {
 } Animation;
 
 static Boolean isAnimating = false;
+static unsigned long autoClickTimer = 0;
 static short headerFontSize, footerFontSize, unselectedNumberSize, selectedNumberSize;
 short globeFontSize, gPenSize;
+Rect  gScreenBounds;
 
 static Rect gridRect, binRects[5], progRects[5], logoRect, titleRect;
 static short cellWidth, cellHeight, progPadding, titlePadding, boxFlaps, pendingBin, level = 1;
@@ -42,7 +48,7 @@ static Animation animation;
 void SetupFonts() {
 	// Adjust the font sizes for small screens
 
-	if ((qd.screenBits.bounds.bottom - qd.screenBits.bounds.top) < 500) {
+	if ((gScreenBounds.bottom - gScreenBounds.top) < 500) {
 		headerFontSize       = 18;
 		footerFontSize       = 12;
 		unselectedNumberSize = 12;
@@ -65,9 +71,11 @@ void SetupFonts() {
 	                            RealFont (helvetica, unselectedNumberSize) &&
 	                            RealFont (helvetica, selectedNumberSize);
 
+	#ifndef COMPILING_AS_CODE_RESOURCE
 	if (!hasAllFonts) {
 		Alert (130, NULL);
 	}
+	#endif
 }
 
 static void ResetNumber (short x, short y, short size) {
@@ -120,7 +128,8 @@ static Boolean DrawTotalProgress () {
 
 	NumToString (totalScore, theStr);
 
-	const short savedTextMode = qd.thePort->txMode;
+	GrafPtr _port; GetPort(&_port);
+	const short savedTextMode = _port->txMode;
 	TextFont (helvetica);
 	TextSize (headerFontSize);
 	TextFace (bold + outline);
@@ -141,7 +150,8 @@ static void DrawBinProgress (short which) {
 	Str255 theStr;
 	FontInfo fi;
 
-	const short savedTextMode = qd.thePort->txMode;
+	GrafPtr _port; GetPort(&_port);
+	const short savedTextMode = _port->txMode;
 	TextFont (helvetica);
 	TextSize (footerFontSize);
 	TextFace (normal);
@@ -166,9 +176,9 @@ static void DrawBinProgress (short which) {
 
 static void DrawSeparator(short y, short separation) {
 	MoveTo (0, y - separation);
-	LineTo(qd.screenBits.bounds.right, y - separation);
+	LineTo(gScreenBounds.right, y - separation);
 	MoveTo (0, y + separation);
-	LineTo(qd.screenBits.bounds.right, y + separation);
+	LineTo(gScreenBounds.right, y + separation);
 }
 
 static void FinishedLevel () {
@@ -211,11 +221,12 @@ static void DrawBoxFlaps (short whichBox, unsigned char easing) {
 }
 
 void StartWorkMode () {
+	autoClickTimer = TickCount() + kAutoClickStartTicks;
 	DrawWorkMode (true);
 }
 
 void DrawWorkMode (Boolean resetNumbers) {
-	EraseRect (&qd.screenBits.bounds);
+	EraseRect (&gScreenBounds);
 
 	PenSize (gPenSize, gPenSize);
 
@@ -232,7 +243,7 @@ void DrawWorkMode (Boolean resetNumbers) {
 
 	// Clear the screen
 
-	EraseRect( &qd.screenBits.bounds );
+	EraseRect( &gScreenBounds );
 
 	// Draw the header
 
@@ -254,7 +265,7 @@ void DrawWorkMode (Boolean resetNumbers) {
 		&titleRect,
 		titleMargin,
 		titleMargin,
-		qd.screenBits.bounds.right - titleMargin - titlePadding * 2 - logoWidth/2,
+		gScreenBounds.right - titleMargin - titlePadding * 2 - logoWidth/2,
 		titleMargin + titleLineHeight + titlePadding * 2);
 	FrameRect(&titleRect);
 
@@ -295,10 +306,10 @@ void DrawWorkMode (Boolean resetNumbers) {
 	const short footerLineHeight    = fi.ascent + fi.descent;
 	const short footerPadding       = scaleBy (footerLineHeight, 0.2);
 	const short footerWidth         = StringWidth (myStr);
-	const short footerTop           = qd.screenBits.bounds.bottom - footerLineHeight - footerPadding * 2;
+	const short footerTop           = gScreenBounds.bottom - footerLineHeight - footerPadding * 2;
 	MoveTo (
-		qd.screenBits.bounds.right/2 - footerWidth/2,
-		qd.screenBits.bounds.bottom - footerPadding - fi.descent
+		gScreenBounds.right/2 - footerWidth/2,
+		gScreenBounds.bottom - footerPadding - fi.descent
 	);
 	DrawString    (myStr);
 	DrawSeparator (footerTop, 0);
@@ -312,10 +323,10 @@ void DrawWorkMode (Boolean resetNumbers) {
 	GetFontInfo (&fi);
 
 	const short progLineHeight         = fi.ascent + fi.descent;
-	const short columnMarginLeftRight  = qd.screenBits.bounds.right / 38;
+	const short columnMarginLeftRight  = gScreenBounds.right / 38;
 	const short progMarginTopBot       = scaleBy (progLineHeight, 0.25);
 	progPadding                        = scaleBy (progLineHeight, 0.25);
-	const short columnWidth            = (qd.screenBits.bounds.right - columnMarginLeftRight * 8) / 5;
+	const short columnWidth            = (gScreenBounds.right - columnMarginLeftRight * 8) / 5;
 	const short progHeight             = fi.ascent + fi.descent + progPadding * 2;
 
 	progRect.bottom = footerTop - progMarginTopBot;
@@ -344,7 +355,7 @@ void DrawWorkMode (Boolean resetNumbers) {
 	binRect.top     = binRect.bottom - binPaddingTopBot * 2 - binLineHeight;
 
 	for (int i = 0; i < NUM_ELEMS(binRects); i++) {
-		unsigned char *binStr = "\p01";
+		unsigned char binStr[] = "\p01";
 		binStr[2] = '1' + i;
 
 		binRect.left  = columnMarginLeftRight * (2 + i) + columnWidth * i;
@@ -368,7 +379,7 @@ void DrawWorkMode (Boolean resetNumbers) {
 		&gridRect,
 		0,
 		headerHeight,
-		qd.screenBits.bounds.right,
+		gScreenBounds.right,
 		binRect.top - binMarginTopBot - 4
 	);
 
@@ -406,7 +417,7 @@ static short SelectNumber (short x, short y) {
 	ResetNumber (number, selectedNumberSize);
 	DrawNumber (number);
 
-	ClipRect(&qd.screenBits.bounds);
+	ClipRect(&gScreenBounds);
 
 	return number->digit - '0';
 }
@@ -478,7 +489,7 @@ static void AnimateNumbers (Animation *animation) {
 	const unsigned char fb = easeBounceQuint   [fixMul (f,NUM_ELEMS(easeBounceQuint) - 1)];
 
 	Rect clipRect;
-	clipRect = qd.screenBits.bounds;
+	clipRect = gScreenBounds;
 	clipRect.bottom = binRects[0].top;
 	ClipRect (&clipRect);
 
@@ -530,7 +541,7 @@ static void AnimateNumbers (Animation *animation) {
 
 	// Draw the box flaps
 
-	ClipRect (&qd.screenBits.bounds);
+	ClipRect (&gScreenBounds);
 	PenMode (patXor);
 
 	DrawBoxFlaps (animation->whichBin, boxFlaps);
@@ -615,11 +626,12 @@ static void AnimateNumbers (Animation *animation) {
 	SetPenState (&savedPenState);
 }
 
-void AnimateWorkMode () {
+Boolean AnimateWorkMode () {
 	if (isAnimating) {
 		AnimateNumbers (&animation);
 	}
 
+	#ifndef COMPILING_AS_CODE_RESOURCE
 	if (Button()) {
 		Point mouseLoc;
 		GetMouse (&mouseLoc);
@@ -630,7 +642,21 @@ void AnimateWorkMode () {
 		if ((x >= 0) && (y >= 0) && (x < kGridCols) && (y < kGridRows)) {
 			pendingBin = SelectNumber (x, y) / 2;
 		}
-	} else if (!isAnimating) {
+		autoClickTimer = TickCount() + kManualClickPause;
+		return false;
+	} else
+	#endif
+	if (!isAnimating) {
+		const unsigned long now = TickCount();
+		if (now >= autoClickTimer) {
+			const short rx = (unsigned short)Random() % kGridCols;
+			const short ry = (unsigned short)Random() % kGridRows;
+			pendingBin = SelectNumber (rx, ry) / 2;
+			autoClickTimer = now + kAutoClickTicks + ((unsigned short)Random() % kAutoClickJitter);
+			isAnimating = BinNumbers (&animation, pendingBin);
+			return true;
+		}
 		isAnimating = BinNumbers (&animation, pendingBin);
 	}
+	return false;
 }

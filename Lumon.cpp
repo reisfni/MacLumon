@@ -25,7 +25,8 @@ enum {
 enum {
 	kQuitTries     = 3,
 	kBootTicks     = 120,
-	kIdleTicks     = 3600,
+	kIdleTicks     = 108000, // ticks of no real input before screen saver activates (~30 min)
+	kIdleDuration  = 900,    // ticks to run screen saver before returning to work mode (~15s)
 };
 
 Boolean   gQuit = false;
@@ -105,7 +106,7 @@ static void DoMenuSelection (long choice) {
 			break;
 
 		case mFile:
-			static triesRemaining = kQuitTries;
+			static int triesRemaining = kQuitTries;
 			if (itemNum == mQuit) {
 				if (triesRemaining--) {
 					Alert (129, NULL);
@@ -118,9 +119,10 @@ static void DoMenuSelection (long choice) {
 	HiliteMenu(0);
 }
 
-void main () {
+int main () {
 	enum {bootMode, workMode, idleMode} state = bootMode;
 	unsigned long gTimer = TickCount ();
+	unsigned long tIdleStart = 0;
 	Point currentMousePoint, lastMousePoint;
 	WindowPtr mainWindow;
 
@@ -135,6 +137,9 @@ void main () {
 	// Initialize the random number generator
 
 	GetDateTime((unsigned long*) &qd.randSeed);
+
+	// Cache screen bounds for use throughout the app
+	gScreenBounds = qd.screenBits.bounds;
 
 	// Create our main window
 
@@ -201,10 +206,11 @@ void main () {
 
 				case mouseDown:
 					switch (FindWindow(event.where, &window)) {
-						case inDrag:
-							Rect dragRect = (**GetGrayRgn()).rgnBBox;
+						case inDrag: {
+							Rect dragRect = (**LMGetGrayRgn()).rgnBBox;
 							DragWindow(window, event.where, &dragRect);
 							break;
+					}
 						case inSysWindow:
 							SystemClick(&event, window);
 							break;
@@ -251,7 +257,7 @@ void main () {
 				AnimateWorkMode();
 
 				if (Button()) {
-					gTimer = TickCount(); // Reset the idle timer
+					gTimer = TickCount();
 				}
 
 				// Check to see whether we should start the screen saver
@@ -260,6 +266,7 @@ void main () {
 					SelectWindow (mainWindow);
 					StartIdleMode ();
 					GetMouse (&lastMousePoint);
+					tIdleStart = TickCount();
 					InvalRect (&qd.screenBits.bounds);
 					state = idleMode;
 				}
@@ -270,7 +277,9 @@ void main () {
 
 				// Check to see whether we should stop the screen saver
 				GetMouse (&currentMousePoint);
-				if (!EqualPt(currentMousePoint, lastMousePoint) || (event.what == keyDown)) {
+				const Boolean userActivity = !EqualPt(currentMousePoint, lastMousePoint) || (event.what == keyDown);
+				const Boolean idleExpired  = (TickCount() - tIdleStart) > kIdleDuration;
+				if (userActivity || idleExpired) {
 					ShowCursor ();
 					gTimer = TickCount();
 					InvalRect (&qd.screenBits.bounds);
@@ -295,4 +304,5 @@ void main () {
 
 	DisposeRgn (gMenuBarRgn);
 	DisposeLogos ();
+	return 0;
 }

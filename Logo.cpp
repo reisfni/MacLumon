@@ -72,7 +72,7 @@ PicHandle GetLumonIcon() {
 
 	DisposeRgn (rgn1);
 	DisposeRgn (rgn2);
-	ClipRect (&qd.screenBits.bounds);
+	ClipRect (&gScreenBounds);
 
 	return myIcon;
 }
@@ -89,8 +89,8 @@ void DrawLumonStr (PicHandle lumonIcon) {
 
 	// Measure the 'O' character, it seems about 95% as tall as the line
 
-	const oWidth  = CharWidth('O');
-	const oHeight = scaleBy (fi.ascent, 0.95);
+	const short oWidth  = CharWidth('O');
+	const short oHeight = scaleBy (fi.ascent, 0.95);
 
 	// Draw 'LUM N' leaving a space for the 'O' and capturing it's position
 
@@ -181,8 +181,9 @@ void DrawLumonGlobe (short fontSize, const Rect &logoRect) {
 
 	// Draw latitude lines
 
-	const short ph = qd.thePort->pnSize.h;
-	const short pv = qd.thePort->pnSize.v;
+	GrafPtr _port; GetPort(&_port);
+	const short ph = _port->pnSize.h;
+	const short pv = _port->pnSize.v;
 
 	const short logoWidth  = logoRect.right  - logoRect.left;
 	const short logoHeight = logoRect.bottom - logoRect.top;
@@ -241,7 +242,7 @@ void DrawLumonGlobe (short fontSize, const Rect &logoRect) {
 
 
 void DrawBootLogo () {
-	Rect myRect = qd.screenBits.bounds;
+	Rect myRect = gScreenBounds;
 
 	EraseRect (&myRect);
 

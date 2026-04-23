@@ -1,7 +1,5 @@
 #pragma once
 
-extern PicHandle gLumonPic, gLumonIcon;
-
 PicHandle GetLumonIcon();
 
 void SetupLogos ();
