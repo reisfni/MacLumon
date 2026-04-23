@@ -20,7 +20,14 @@ All credit for the original application goes to [marciot](https://github.com/mar
 
 The `afterdark-module` branch additionally includes an **After Dark 3.x screen saver module** — the full MDR work screen running as a proper Mac screen saver managed by After Dark.
 
-### Building
+### Download
+
+Pre-built disk images are available on the [Releases page](https://github.com/reisfni/MacLumon/releases):
+
+- `MacLumon.dsk` — 800 KB floppy disk image (use with an emulator or write to a real floppy)
+- `MacLumon.bin` — MacBinary file for direct transfer to a Mac
+
+### Building from source
 
 Requires the [Retro68](https://github.com/autc04/Retro68) cross-compiler toolchain.
 
@@ -29,7 +36,5 @@ mkdir build && cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=~/.retro68-deps/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake ..
 make
 ```
-
-Produces `MacLumon.dsk` (800 KB floppy image) and `MacLumon.bin` (MacBinary) in the `build/` directory.
 
 Tested on a Macintosh SE/30 running System 7.5.3.
